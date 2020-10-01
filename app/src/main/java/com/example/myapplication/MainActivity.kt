@@ -16,6 +16,7 @@ import org.eclipse.paho.client.mqttv3.MqttException
 import org.eclipse.paho.client.mqttv3.MqttMessage
 import java.util.*
 import kotlin.concurrent.schedule
+import org.json.JSONObject
 
 
 class MainActivity : AppCompatActivity() {
@@ -81,6 +82,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun setMqttCallBack() {
         mqttClient.setCallback(object : MqttCallbackExtended {
+
             override fun connectComplete(b: Boolean, s: String) {
                 val snackbarMsg = "Connected to host:\n'$SOLACE_MQTT_HOST'."
                 Log.w("Debug", snackbarMsg)
@@ -97,7 +99,20 @@ class MainActivity : AppCompatActivity() {
             override fun messageArrived(topic: String, mqttMessage: MqttMessage) {
                 Log.w("Debug", "Message received from host '$SOLACE_MQTT_HOST': $mqttMessage")
                 textViewNumMsgs.text = ("${textViewNumMsgs.text.toString().toInt() + 1}")
-                val str: String = "------------"+ Calendar.getInstance().time +"-------------\n$mqttMessage\n${textViewMsgPayload.text}"
+                // Process mqtt message to get reply-to and correlation_id
+                val msg = JSONObject(mqttMessage.toString())
+                val replyTo = msg.optString("replyTo")
+                val correlationId = msg.optString("correlationId")
+                val message = msg.optString("message")
+
+                val reply = JSONObject();
+                reply.put("correlationId", correlationId);
+                reply.put("message", "Sample Response");
+                val respPayload = reply.toString();
+                mqttClient.publish(replyTo, respPayload)
+
+                //val str: String = "------------"+ Calendar.getInstance().time +"-------------\n$mqttMessage\n${textViewMsgPayload.text}"
+                val str: String = "replyTo: $replyTo correlationId: $correlationId respPayload: $respPayload \n-----$mqttMessage\n${textViewMsgPayload.text}"
                 textViewMsgPayload.text = str
             }
 
